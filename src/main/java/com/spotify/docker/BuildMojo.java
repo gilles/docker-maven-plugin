@@ -128,6 +128,14 @@ public class BuildMojo extends AbstractDockerMojo {
   private boolean useGitCommitId;
 
   /**
+   * If specified as true, the tag will be prepended with the git commit count.
+   * This has no effect if useGitCommitId is false.
+   * The final tag will be gitCommitCount-gitCommitId
+   */
+  @Parameter(property = "useGitCommitCount", defaultValue = "false")
+  private boolean useGitCommitCount;
+
+  /**
    * Resources to include in the build. Specify resources by using the standard resource elements as
    * defined in the <a href="http://maven.apache.org/pom.html#Resources">resources</a> section in
    * the pom reference. If dockerDirectory is not set, the <tt>targetPath</tt> value is the location
@@ -171,8 +179,6 @@ public class BuildMojo extends AbstractDockerMojo {
       return;
     }
 
-    session.getCurrentProject().getProperties().put("gitShortCommitId", Utils.getGitCommitId());
-
     loadProfile();
 
     validateParameters();
@@ -185,8 +191,18 @@ public class BuildMojo extends AbstractDockerMojo {
       if (tag != null) {
         getLog().warn("Ignoring useGitCommitId flag because tag is explicitly set in image name ");
       } else {
-        final String commitId = Utils.getGitCommitId();
-        imageName = repo + ":" + commitId;
+        final String gitCommitId = Utils.getGitCommitId();
+        session.getCurrentProject().getProperties().put("gitShortCommitId", gitCommitId);
+
+        String gitTag = gitCommitId;
+
+        if (useGitCommitCount) {
+          final int gitCommitCount = Utils.getGitCommitCount();
+          session.getCurrentProject().getProperties().put("gitCommitCount", gitCommitCount);
+          gitTag = String.format("%d-%s", gitCommitCount, gitCommitId);
+        }
+
+        imageName = repo + ":" + gitTag;
       }
     }
 

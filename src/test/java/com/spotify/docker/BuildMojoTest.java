@@ -52,8 +52,10 @@ import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Matchers.matches;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 public class BuildMojoTest extends AbstractMojoTestCase {
 
@@ -114,6 +116,20 @@ public class BuildMojoTest extends AbstractMojoTestCase {
     verify(docker).push(eq("busybox"), any(AnsiProgressHandler.class));
   }
 
+  public void testBuildWithGitInfo() throws Exception {
+    final File pom = getTestFile("src/test/resources/pom-build-git.xml");
+    assertNotNull("Null pom.xml", pom);
+    assertTrue("pom.xml does not exist", pom.exists());
+
+    final BuildMojo mojo = setupMojo(pom);
+    final DockerClient docker = mock(DockerClient.class);
+    mojo.execute(docker);
+
+    verify(docker).build(eq(Paths.get("target/docker")), matches("^busybox:\\d{2}-[a-z0-9]{7}.*"),
+                         any(AnsiProgressHandler.class));
+    verifyNoMoreInteractions(docker);
+  }
+
   public void testBuildWithGeneratedDockerfile() throws Exception {
     final File pom = getTestFile("src/test/resources/pom-build-generated-dockerfile.xml");
     assertNotNull("Null pom.xml", pom);
@@ -164,6 +180,10 @@ public class BuildMojoTest extends AbstractMojoTestCase {
       assertTrue(format("Exception message should have contained '%s'", message),
                  e.getMessage().contains(message));
     }
+  }
+
+  public void testBuildSkip() {
+
   }
 
   private BuildMojo setupMojo(final File pom) throws Exception {

@@ -67,6 +67,7 @@ public class TagMojoTest extends AbstractMojoTestCase {
     assertTrue(String.format("tag '%s' should be git commit ID at least 7 characters long ",
                              split[1]),
                split[1].length() >= 7);
+    assertFalse("tag should not contain commitCount", split[1].contains("-"));
   }
 
   public void testTag3() throws Exception {
@@ -79,6 +80,28 @@ public class TagMojoTest extends AbstractMojoTestCase {
     final DockerClient docker = mock(DockerClient.class);
     mojo.execute(docker);
     verify(docker).tag("imageToTag", "newRepo:newTag");
+  }
+
+  public void testTag4() throws Exception {
+    final File pom = getTestFile("src/test/resources/pom-tag4.xml");
+    assertNotNull("Null pom.xml", pom);
+    assertTrue("pom.xml does not exist", pom.exists());
+
+    final TagMojo mojo = (TagMojo) lookupMojo("tag", pom);
+    assertNotNull(mojo);
+    final DockerClient docker = mock(DockerClient.class);
+    final ArgumentCaptor<String> image = ArgumentCaptor.forClass(String.class);
+    final ArgumentCaptor<String> name = ArgumentCaptor.forClass(String.class);
+    mojo.execute(docker);
+    verify(docker).tag(image.capture(), name.capture());
+    assertEquals("wrong image", "imageToTag", image.getValue());
+    final String[] split = name.getValue().split(":");
+    assertEquals("wrong name", "newRepo", split[0]);
+    final String[] gitSplit = split[1].split("-");
+    assertNotNull(String.format("tag '%s' should have the commit count ", gitSplit[0]));
+    assertTrue(
+        String.format("tag '%s' should be git commit ID at least 7 characters long ", gitSplit[1]),
+        split[1].length() >= 7);
   }
 
 }

@@ -83,6 +83,14 @@ public class TagMojo extends AbstractDockerMojo {
   @Parameter(property = "useGitCommitId", defaultValue = "false")
   private boolean useGitCommitId;
 
+  /**
+   * If specified as true, the tag will be prepended with the git commit count.
+   * This has no effect if useGitCommitId is false.
+   * The final tag will be gitCommitCount-gitCommitId
+   */
+  @Parameter(property = "useGitCommitCount", defaultValue = "false")
+  private boolean useGitCommitCount;
+
   @Override
   protected void execute(DockerClient docker)
       throws MojoExecutionException, DockerException,
@@ -102,6 +110,10 @@ public class TagMojo extends AbstractDockerMojo {
         getLog().warn("Ignoring useGitCommitId flag because tag is explicitly set in image name ");
       } else {
         tag = Utils.getGitCommitId();
+        if (useGitCommitCount) {
+          final int gitCommitCount = Utils.getGitCommitCount();
+          tag = String.format("%d-%s", gitCommitCount, tag);
+        }
       }
     }
 

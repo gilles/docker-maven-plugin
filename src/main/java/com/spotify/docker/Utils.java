@@ -33,6 +33,8 @@ import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 
 import java.io.IOException;
@@ -69,17 +71,8 @@ public class Utils {
   public static String getGitCommitId()
       throws GitAPIException, DockerException, IOException, MojoExecutionException {
 
-    final FileRepositoryBuilder builder = new FileRepositoryBuilder();
-    builder.readEnvironment(); // scan environment GIT_* variables
-    builder.findGitDir(); // scan up the file system tree
-
-    if (builder.getGitDir() == null) {
-      throw new MojoExecutionException(
-          "Cannot tag with git commit ID because directory not a git repo");
-    }
-
     final StringBuilder result = new StringBuilder();
-    final Repository repo = builder.build();
+    final Repository repo = getRepository();
 
     try {
       // get the first 7 characters of the latest commit
@@ -108,6 +101,45 @@ public class Utils {
     }
 
     return result.length() == 0 ? null : result.toString();
+  }
+
+  /**
+   * Get the git commit count.
+   *
+   * Similar to running git rev-list HEAD --count
+   *
+   * @return The git commit count
+   */
+  public static int getGitCommitCount() throws IOException, MojoExecutionException {
+    final Repository repo = getRepository();
+    final ObjectId revision = repo.resolve("HEAD");
+    RevWalk walk = new RevWalk(repo);
+    walk.setRetainBody(false);
+    RevCommit head = walk.parseCommit(revision);
+    walk.markStart(head);
+    int res = 0;
+    for (RevCommit unused : walk) {
+      res += 1;
+    }
+    return res;
+  }
+
+  /**
+   * Get the git repository
+   *
+   * @return The git repository
+   */
+  private static Repository getRepository() throws MojoExecutionException, IOException {
+    final FileRepositoryBuilder builder = new FileRepositoryBuilder();
+    builder.readEnvironment(); // scan environment GIT_* variables
+    builder.findGitDir(); // scan up the file system tree
+
+    if (builder.getGitDir() == null) {
+      throw new MojoExecutionException(
+          "Cannot tag with git commit ID because directory not a git repo");
+    }
+
+    return builder.build();
   }
 
 }
